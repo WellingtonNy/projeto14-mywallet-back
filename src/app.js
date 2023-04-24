@@ -24,6 +24,41 @@ try {
 const db = mongoClient.db()
 
 
+//cadastrar
+app.post('/sing-up' ,async (req,res)=> {
+    const {nome,email,senha}=req.body
+
+    try {
+        await db.collection('usuarios').insertOne({nome,email,senha})
+        res.sendStatus(201)
+        
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
+
+
+//logar
+app.post('/sing-in' ,async (req,res)=>{
+const {email,senha} =req.body
+
+try {
+const usuario = await db.collection('usuarios').findOne({email,senha})
+if(!usuario) return res.sendStatus(401)
+
+res.sendStatus(200)
+    
+} catch (err) {
+    res.status(500).send(err.message)
+}
+
+})
+
+
+
+
+
 
 
 
