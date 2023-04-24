@@ -4,6 +4,7 @@ import { MongoClient, ObjectId } from "mongodb"
 import dotenv from "dotenv"
 import joi from "joi"
 import dayjs from "dayjs"
+import bcrypt from 'bcrypt'
 
 
 
@@ -28,8 +29,10 @@ const db = mongoClient.db()
 app.post('/sing-up' ,async (req,res)=> {
     const {nome,email,senha}=req.body
 
+   const hash = bcrypt.hashSync(senha, 10)
+
     try {
-        await db.collection('usuarios').insertOne({nome,email,senha})
+        await db.collection('usuarios').insertOne({nome,email,senha:hash})
         res.sendStatus(201)
         
     } catch (err) {
@@ -41,18 +44,21 @@ app.post('/sing-up' ,async (req,res)=> {
 
 //logar
 app.post('/sing-in' ,async (req,res)=>{
-const {email,senha} =req.body
+    const {email,senha} =req.body
 
-try {
-const usuario = await db.collection('usuarios').findOne({email,senha})
-if(!usuario) return res.sendStatus(401)
+    try {
+        const usuario = await db.collection('usuarios').findOne({email})
 
-res.sendStatus(200)
+        if(!usuario) return res.status(401).send('Usuario Não Cadastrado')
+
+        const senhaCerta = bcrypt.compareSync(senha, usuario.senha)
+        if(!senhaCerta) return res.status(401).send('Senha Incorreta')
+
+        res.sendStatus(200)
     
-} catch (err) {
-    res.status(500).send(err.message)
-}
-
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
 })
 
 
