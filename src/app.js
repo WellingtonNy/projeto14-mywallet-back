@@ -2,7 +2,7 @@ import express from "express"
 import cors from "cors"
 import { MongoClient, ObjectId } from "mongodb"
 import dotenv from "dotenv"
-import joi, { required } from "joi"
+import joi from "joi"
 import dayjs from "dayjs"
 import bcrypt from 'bcrypt'
 import { v4 as uuid } from 'uuid'
@@ -17,6 +17,9 @@ dotenv.config()
 
 //conexao
 const mongoClient = new MongoClient(process.env.DATABASE_URL)
+
+
+
 try {
     await mongoClient.connect()
     console.log('Conectado DBmongo')
@@ -30,7 +33,7 @@ const db = mongoClient.db()
 const usuarioSchema = joi.object({
     nome:joi.string().required(),
     email:joi.string().email().required(),
-    senha:joi.string().required().min(3)
+    senha:joi.string().min(3).required()
 })
 
 const transacaoSchema = joi.object({
@@ -132,7 +135,8 @@ app.post('/transacao' ,async (req,res)=>{
 
     try {
           
-        const sessao =  await db.collections('sessoes').findOne({token})
+        const sessao =  await db.collections('sessoes').findOne({ token })
+
         if(!sessao) return res.sendStatus(401)
 
         await db.collections('transacoes').insertOne({...req.body,idUsuario:sessao.idUsuario})
