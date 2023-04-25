@@ -164,7 +164,8 @@ app.get('/transacao' ,async (req,res)=>{
         if(!sessao) return res.sendStatus(401)
 
         //requisição get
-
+        const tran = await db.collection('transacoes').find({idUsuario:sessao.idUsuario}).toArray()
+        res.status(200).send(tran.reverse())
 
     } catch (err) {
         res.status(500).send(err.message)
