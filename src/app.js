@@ -98,7 +98,7 @@ app.post('/sing-in' ,async (req,res)=>{
         await db.collection('sessoes').insertOne({token,idUsuario: usuario._id})
 
         //retornar o token
-        res.status(200).send(token)
+        res.status(200).send({token,usuario:usuario.nome})
     
     } catch (err) {
         res.status(500).send(err.message)
@@ -114,6 +114,7 @@ app.post('/transacao' ,async (req,res)=>{
     //desestruturar token
     const {authorization} = req.headers
 
+    const dia = dayjs().format("DD/MM")
     //retirar bearer do token
     // ? = optional chaining
     const token =authorization?.replace('Bearer ','')
@@ -135,11 +136,11 @@ app.post('/transacao' ,async (req,res)=>{
 
     try {
           
-        const sessao =  await db.collections('sessoes').findOne({ token })
+        const sessao =  await db.collection('sessoes').findOne({ token })
 
         if(!sessao) return res.sendStatus(401)
 
-        await db.collections('transacoes').insertOne({...req.body,idUsuario:sessao.idUsuario})
+        await db.collection('transacoes').insertOne({...req.body,idUsuario:sessao.idUsuario,dia})
         res.sendStatus(201)
 
     } catch (err) {
@@ -164,7 +165,7 @@ app.get('/transacao' ,async (req,res)=>{
 
     try {
         //valida existencia do token
-        const sessao =  await db.collections('sessoes').findOne({token})
+        const sessao =  await db.collection('sessoes').findOne({token})
         if(!sessao) return res.sendStatus(401)
 
         //requisição get
