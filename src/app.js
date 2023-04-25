@@ -5,6 +5,7 @@ import dotenv from "dotenv"
 import joi, { required } from "joi"
 import dayjs from "dayjs"
 import bcrypt from 'bcrypt'
+import { v4 as uuid } from 'uuid'
 
 
 
@@ -29,9 +30,14 @@ const db = mongoClient.db()
 const usuarioSchema = joi.object({
     nome:joi.string().required(),
     email:joi.string().email().required(),
-    senha:joi.string().required().min(6)
+    senha:joi.string().required().min(3)
 })
 
+const transacaoSchema = joi.object({
+    valor:joi.number().required(),
+    descricao:joi.string().required(),
+    tipo:joi.string().valid("entrada","saida").required()
+})
 
 
 //cadastrar
@@ -47,7 +53,6 @@ app.post('/sing-up' ,async (req,res)=> {
         return res.status(422).send(errors)
     }
 
-   
 
     try {
        //verificar se o usuario já foi cadastrado
@@ -73,14 +78,24 @@ app.post('/sing-in' ,async (req,res)=>{
     const {email,senha} =req.body
 
     try {
+        //achar usuario por email
         const usuario = await db.collection('usuarios').findOne({email})
 
-        if(!usuario) return res.status(401).send('Usuario Não Cadastrado')
+       //validar email usuario
+        if(!usuario) return res.status(404).send('Usuario Não Cadastrado')
 
+       //validar senha usuario
         const senhaCerta = bcrypt.compareSync(senha, usuario.senha)
         if(!senhaCerta) return res.status(401).send('Senha Incorreta')
 
-        res.sendStatus(200)
+        //gerar token
+        const token = uuid()
+
+        //guardar token em sessoes
+        await db.collection('sessoes').insertOne({token,idUsuario: usuario._id})
+
+        //retornar o token
+        res.status(200).send(token)
     
     } catch (err) {
         res.status(500).send(err.message)
@@ -89,8 +104,74 @@ app.post('/sing-in' ,async (req,res)=>{
 
 
 
+//entrada e saida
+app.post('/transacao' ,async (req,res)=>{
+    //desestruturar body
+    const {valor,descricao,tipo} =req.body
+    //desestruturar token
+    const {authorization} = req.headers
+
+    //retirar bearer do token
+    // ? = optional chaining
+    const token =authorization?.replace('Bearer ','')
 
 
+    //verificar se o token é valido
+    if(!token) return res.status(401).send('Desculpe, mas você não tem autorização')
+
+    
+
+    //validar Schema
+    const validation = transacaoSchema.validate(req.body, {abortEarly: false })
+    if(validation.error){
+        const errors = validation.error.details.map((detail)=>detail.message);
+        return res.status(422).send(errors)
+    }
+
+
+
+    try {
+          
+        const sessao =  await db.collections('sessoes').findOne({token})
+        if(!sessao) return res.sendStatus(401)
+
+        await db.collections('transacoes').insertOne({...req.body,idUsuario:sessao.idUsuario})
+        res.sendStatus(201)
+
+    } catch (err) {
+        res.status(500).send(err.message)
+    }
+})
+
+
+
+//get de transacoes
+app.get('/transacao' ,async (req,res)=>{
+    //desestruturar token
+    const {authorization} = req.headers
+
+    //retirar bearer do token
+    // ? = optional chaining
+    const token =authorization?.replace('Bearer ','')
+
+
+    //verificar se o token é valido
+    if(!token) return res.status(401).send('Desculpe, mas você não tem autorização')
+
+    try {
+        //valida existencia do token
+        const sessao =  await db.collections('sessoes').findOne({token})
+        if(!sessao) return res.sendStatus(401)
+
+        //requisição get
+
+
+    } catch (err) {
+        res.status(500).send(err.message)
+        
+    }
+
+})
 
 
 
